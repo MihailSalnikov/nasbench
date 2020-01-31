@@ -110,7 +110,59 @@ class CIFARInput(object):
       dataset = dataset.repeat()
 
     # Parse, preprocess, and batch images
-    parser_fn = functools.partial(_parser, is_training)
+    if params['use_KD']:
+      parser_fn = functools.partial(_parser_KD, is_training)
+    else:
+      parser_fn = functools.partial(_parser, is_training)
+    dataset = dataset.apply(
+        tf.contrib.data.map_and_batch(
+            parser_fn,
+            batch_size=batch_size,
+            num_parallel_batches=self.config['tpu_num_shards'],
+            drop_remainder=True))
+
+    # Assign static batch size dimension
+    if params['use_KD']:
+      dataset = dataset.map(functools.partial(_set_batch_dimension_KD, batch_size))
+    else:
+      dataset = dataset.map(functools.partial(_set_batch_dimension, batch_size))
+    
+
+    # Prefetch to overlap in-feed with training
+    dataset = dataset.prefetch(tf.contrib.data.AUTOTUNE)
+
+    return dataset
+
+  def input_fn_aug_always(self, params):
+    """Returns a CIFAR tf.data.Dataset object.
+
+    Args:
+      params: parameter dict pass by Estimator.
+
+    Returns:
+      tf.data.Dataset object
+    """
+    batch_size = params['batch_size']
+    is_training = (self.mode == 'train' or self.mode == 'augment')
+
+    dataset = tf.data.TFRecordDataset(self.data_files)
+    dataset = dataset.prefetch(buffer_size=batch_size)
+
+    # Repeat dataset for training modes
+    if is_training:
+      # Shuffle buffer with whole dataset to ensure full randomness per epoch
+      dataset = dataset.cache().apply(
+          tf.contrib.data.shuffle_and_repeat(
+              buffer_size=self.num_images))
+
+    # This is a hack to allow computing metrics on a fixed batch on TPU. Because
+    # TPU shards the batch acrosss cores, we replicate the fixed batch so that
+    # each core contains the whole batch.
+    if self.mode == 'sample':
+      dataset = dataset.repeat()
+
+    # Parse, preprocess, and batch images
+    parser_fn = functools.partial(_parser, True)
     dataset = dataset.apply(
         tf.contrib.data.map_and_batch(
             parser_fn,
@@ -125,6 +177,49 @@ class CIFARInput(object):
     dataset = dataset.prefetch(tf.contrib.data.AUTOTUNE)
 
     return dataset
+
+  def input_fn_predict(self, params):
+    """Returns a CIFAR tf.data.Dataset object.
+
+    Args:
+      params: parameter dict pass by Estimator.
+
+    Returns:
+      tf.data.Dataset object
+    """
+    batch_size = params['batch_size']
+    is_training = (self.mode == 'train' or self.mode == 'augment')
+
+    dataset = tf.data.TFRecordDataset(self.data_files)
+    dataset = dataset.prefetch(buffer_size=batch_size)
+
+    
+    # This is a hack to allow computing metrics on a fixed batch on TPU. Because
+    # TPU shards the batch acrosss cores, we replicate the fixed batch so that
+    # each core contains the whole batch.
+    if self.mode == 'sample':
+      dataset = dataset.repeat()
+
+    # Parse, preprocess, and batch images
+    parser_fn = functools.partial(_parser, False)
+    dataset = dataset.apply(
+        tf.contrib.data.map_and_batch(
+            parser_fn,
+            batch_size=batch_size,
+            num_parallel_batches=self.config['tpu_num_shards'],
+            drop_remainder=True))
+
+    # Assign static batch size dimension
+    dataset = dataset.map(functools.partial(_set_batch_dimension, batch_size))
+
+    # Prefetch to overlap in-feed with training
+    dataset = dataset.prefetch(tf.contrib.data.AUTOTUNE)
+
+    return dataset
+
+
+def serving_input_fn(): # fmsnew: todo: fill (see tutorial https://www.damienpontifex.com/posts/using-tensorflow-serving-to-host-our-retrained-image-classifier/)
+  pass
 
 
 def _preprocess(image):
@@ -181,3 +276,34 @@ def _set_batch_dimension(batch_size, images, labels):
       tf.TensorShape([batch_size])))
 
   return images, labels
+
+
+def _parser_KD(use_preprocessing, serialized_example):
+  """Parses a single tf.Example into image and label tensors."""
+  features = tf.parse_single_example(
+      serialized_example,
+      features={
+          'image': tf.FixedLenFeature([], tf.string),
+          'label': tf.FixedLenFeature([11], tf.float32),
+      })
+  image = tf.decode_raw(features['image'], tf.uint8)
+  image.set_shape([3 * HEIGHT * WIDTH])
+  image = tf.reshape(image, [3, HEIGHT, WIDTH])
+  # TODO(chrisying): handle NCHW format
+  image = tf.transpose(image, [1, 2, 0])
+  image = tf.cast(image, tf.float32)
+  if use_preprocessing:
+    image = _preprocess(image)
+  image -= tf.constant(RGB_MEAN, shape=[1, 1, 3])
+  image /= tf.constant(RGB_STD, shape=[1, 1, 3])
+  label = tf.cast(features['label'], tf.float32)
+  return image, label
+
+def _set_batch_dimension_KD(batch_size, images, labels):
+  images.set_shape(images.get_shape().merge_with(
+      tf.TensorShape([batch_size, None, None, None])))
+  labels.set_shape(labels.get_shape().merge_with(
+      tf.TensorShape([batch_size, None])))
+
+  return images, labels
+

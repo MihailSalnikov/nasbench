@@ -33,6 +33,41 @@ import numpy as np
 import tensorflow as tf
 
 
+# class KDCriterion():
+#     """KDCriterion
+#         criterion for Knowladge Distilation
+#         weighted sum of KLDivLoss and CrossEntropyLoss
+#     Args:
+#         imitation_lmb (float, optional): hyperparameter for weight
+#             KLDivLoss and CrossEntropyLoss.
+#             (1.0-imitation_lmb)*CrossEntropyLoss + imitation_lmb*KLDivLoss
+#             Defaults to 0.7
+#         temperature (float, optional): Temperature for Knowladge Distilation
+#             Defaults to 20.0
+#     """
+#     def __init__(self, imitation_lmb=0.7, temperature=20.0):
+#         self.imitation_lmb = imitation_lmb
+#         self.temperature = temperature
+
+#         self.softmax = nn.Softmax(dim=1)
+#         self.crosentropy = nn.CrossEntropyLoss()
+#         self.logsoftmax = nn.LogSoftmax(dim=1)
+#         self.kl_div = nn.KLDivLoss(reduction='batchmean')
+
+#     def __call__(self, recepient_logits, donor_logits, y_target):
+#         loss_soft = self.kl_div(
+#             self.logsoftmax(recepient_logits / self.temperature),
+#             self.softmax(donor_logits / self.temperature)
+#         )
+#         loss_soft *= (self.temperature ** 2.0)
+
+#         loss_ce = self.crosentropy(
+#             recepient_logits,
+#             y_target
+#         )
+
+#     return (1.0-self.imitation_lmb)*loss_ce + self.imitation_lmb*loss_soft
+
 def build_model_fn(spec, config, num_train_images):
   """Returns a model function for Estimator."""
   if config['data_format'] == 'channels_last':
@@ -105,13 +140,29 @@ def build_model_fn(spec, config, num_train_images):
       # compute the loss or anything dependent on it (i.e., the gradients).
       loss = tf.constant(0.0)
     else:
-      loss = tf.losses.softmax_cross_entropy(
-          onehot_labels=tf.one_hot(labels, config['num_labels']),
-          logits=logits)
+      if config['use_KD']:
+        imitation_lmb = config['imitation_lmb']
+        temperature = config['temperature']
+        loss_soft = tf.keras.losses.KLD(
+            tf.math.log_softmax(logits / temperature),
+            tf.math.softmax(labels[:, 1:] / temperature)
+        )
+        loss_soft *= (temperature ** 2.0)
+
+        loss_ce = tf.losses.softmax_cross_entropy(
+            onehot_labels=tf.one_hot(labels[:, 0], config['num_labels']),
+            logits=logits)
+
+        loss = (1.0-imitation_lmb)*loss_ce + imitation_lmb*loss_soft
+        
+      else:
+        loss = tf.losses.softmax_cross_entropy(
+            onehot_labels=tf.one_hot(labels, config['num_labels']),
+            logits=logits)
 
       loss += config['weight_decay'] * tf.add_n(
           [tf.nn.l2_loss(v) for v in tf.trainable_variables()])
-
+    
     # Use inference mode to compute some useful metrics on a fixed sample
     # Due to the batch being sharded on TPU, these metrics should be run on CPU
     # only to ensure that the metrics are computed on the whole batch. We add a
@@ -135,7 +186,7 @@ def build_model_fn(spec, config, num_train_images):
       grads = tf.gradients(loss, all_params_tensors)
 
       param_gradient_norms = {}
-      for name, grad in zip(all_params_names, grads)[:-1]:
+      for name, grad in list(zip(all_params_names, grads))[:-1]:
         if grad is not None:
           param_gradient_norms[name] = (
               tf.expand_dims(tf.norm(grad, ord=2), 0))
@@ -226,7 +277,10 @@ def build_model_fn(spec, config, num_train_images):
     elif mode == tf.estimator.ModeKeys.EVAL:
       def metric_fn(labels, logits):
         predictions = tf.argmax(logits, axis=1)
-        accuracy = tf.metrics.accuracy(labels, predictions)
+        if config['use_KD']:
+          accuracy = tf.metrics.accuracy(labels[:, 0], predictions)
+        else:
+          accuracy = tf.metrics.accuracy(labels, predictions)
 
         return {'accuracy': accuracy}
 

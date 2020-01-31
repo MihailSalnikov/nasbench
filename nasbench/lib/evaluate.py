@@ -122,7 +122,7 @@ class _TrainAndEvaluator(object):
         else:
           timing = training_time.limit(None)
 
-        evaluations = map(float, self.config['intermediate_evaluations'])
+        evaluations = list(map(float, self.config['intermediate_evaluations']))
         if not evaluations or evaluations[-1] != 1.0:
           evaluations.append(1.0)
         assert evaluations == sorted(evaluations)
@@ -197,8 +197,8 @@ class _TrainAndEvaluator(object):
 
   def _compute_sample_metrics(self):
     """Computes the metrics on a fixed batch."""
-    sample_metrics = self.estimator.predict(
-        input_fn=self.input_sample.input_fn, yield_single_examples=False).next()
+    sample_metrics = next(self.estimator.predict(
+        input_fn=self.input_sample.input_fn, yield_single_examples=False))
 
     # Fix the extra batch dimension added by PREDICT
     for metric in sample_metrics:
@@ -260,6 +260,8 @@ def _create_estimator(spec, config, model_dir,
   # Estimator will save a checkpoint at the end of every train() call. Disable
   # automatic checkpoints by setting the time interval between checkpoints to
   # a very large value.
+  assert config['use_tpu']==False # fmsnew
+
   run_config = tf.contrib.tpu.RunConfig(
       model_dir=model_dir,
       keep_checkpoint_max=3,    # Keeps ckpt at start, halfway, and end
@@ -271,6 +273,7 @@ def _create_estimator(spec, config, model_dir,
   # This is a hack to allow PREDICT on a fixed batch on TPU. By replicating the
   # batch by the number of shards, this ensures each TPU core operates on the
   # entire fixed batch.
+
   if num_sample_images and config['use_tpu']:
     num_sample_images *= config['tpu_num_shards']
 
