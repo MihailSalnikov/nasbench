@@ -282,6 +282,7 @@ def _create_estimator(spec, config, model_dir,
       model_fn=model_builder.build_model_fn(
           spec, config, num_train_images),
       config=run_config,
+      params={'use_KD':config['use_KD']},
       train_batch_size=config['batch_size'],
       eval_batch_size=config['batch_size'],
       predict_batch_size=num_sample_images)

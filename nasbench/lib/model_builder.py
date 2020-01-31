@@ -147,17 +147,18 @@ def build_model_fn(spec, config, num_train_images):
             tf.math.log_softmax(logits / temperature),
             tf.math.softmax(labels[:, 1:] / temperature)
         )
+        loss_soft = tf.math.reduce_mean(loss_soft)
         loss_soft *= (temperature ** 2.0)
 
         loss_ce = tf.losses.softmax_cross_entropy(
-            onehot_labels=tf.one_hot(labels[:, 0], config['num_labels']),
+            onehot_labels=tf.one_hot(tf.dtypes.cast(labels[:, 0], tf.int32), config['num_labels']),
             logits=logits)
 
         loss = (1.0-imitation_lmb)*loss_ce + imitation_lmb*loss_soft
         
       else:
         loss = tf.losses.softmax_cross_entropy(
-            onehot_labels=tf.one_hot(labels, config['num_labels']),
+            onehot_labels=tf.one_hot(tf.dtypes.cast(labels, tf.int32), config['num_labels']),
             logits=logits)
 
       loss += config['weight_decay'] * tf.add_n(
@@ -278,7 +279,7 @@ def build_model_fn(spec, config, num_train_images):
       def metric_fn(labels, logits):
         predictions = tf.argmax(logits, axis=1)
         if config['use_KD']:
-          accuracy = tf.metrics.accuracy(labels[:, 0], predictions)
+          accuracy = tf.metrics.accuracy(tf.dtypes.cast(labels[:, 0], tf.int32), predictions)
         else:
           accuracy = tf.metrics.accuracy(labels, predictions)
 
