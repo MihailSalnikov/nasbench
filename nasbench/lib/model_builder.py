@@ -155,6 +155,9 @@ def build_model_fn(spec, config, num_train_images):
             logits=logits)
 
         loss = (1.0-imitation_lmb)*loss_ce + imitation_lmb*loss_soft
+        # loss = tf.losses.softmax_cross_entropy(
+        #     onehot_labels=tf.one_hot(tf.dtypes.cast(labels[:, 0], tf.int32), config['num_labels']),
+        #     logits=logits)
         
       else:
         loss = tf.losses.softmax_cross_entropy(
