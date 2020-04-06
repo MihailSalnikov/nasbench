@@ -33,6 +33,7 @@ def main():
     config['test_data_file'] = ['test.tfrecords']
     config['sample_data_file'] = ['sample.tfrecords']
     config['train_epochs'] = 1
+    config['use_KD'] = False
     
     matrix=[[0, 1, 1, 1, 0, 1, 0],    # input layer
           [0, 0, 0, 0, 0, 0, 1],    # 1x1 conv
@@ -49,7 +50,7 @@ def main():
     labels = np.array(labels)
 
     spec = model_spec.ModelSpec(matrix, labels)
-    model_dir = '../my_model_dir'
+    model_dir = '../data/tmp'
 
     meta = evaluate.train_and_evaluate(spec, config, model_dir)
 

@@ -4,7 +4,10 @@ nasbench.egg-info/
 *.tfrecords
 *.tar.gz
 *.ipynb_checkpoints/
+build
+dist
 nasbench/scripts/cifar-10-batches-py/
 nasbench/my_model_dir/
 nasbench/my_model_dir_tmp/
 nasbench/my_model_dir_kd/
+nasbench/data
