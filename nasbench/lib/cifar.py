@@ -68,18 +68,23 @@ class CIFARInput(object):
   @property
   def num_images(self):
     """Number of images in the dataset (depends on the mode)."""
-    if self.mode == 'train':
-      return 40000
-    elif self.mode == 'train_eval':
-      return 10000
-    elif self.mode == 'valid':
-      return 10000
-    elif self.mode == 'test':
-      return 10000
-    elif self.mode == 'augment':
-      return 50000
-    elif self.mode == 'sample':
-      return 100
+    size = 0
+    for filename in self.data_files:
+        for _ in tf.python_io.tf_record_iterator(filename):
+            size += 1
+    return size
+#     if self.mode == 'train':
+#       return 40000
+#     elif self.mode == 'train_eval':
+#       return 10000
+#     elif self.mode == 'valid':
+#       return 10000
+#     elif self.mode == 'test':
+#       return 10000
+#     elif self.mode == 'augment':
+#       return 50000
+#     elif self.mode == 'sample':
+#       return 100
 
   def input_fn(self, params):
     """Returns a CIFAR tf.data.Dataset object.
