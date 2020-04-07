@@ -40,6 +40,8 @@ flags.DEFINE_float('imitation_lmb', 0.7,
                    'Immitation lambda for KD process')
 flags.DEFINE_float('temperature', 20.0,
                    'Temperature for KD process')
+flags.DEFINE_float('trainset_part_percentage', 100.0,
+                   'trainset_part_percentage like in prepare KD dataset')
 
 # Redefine file flags
 flags.DEFINE_list(
@@ -74,31 +76,29 @@ FLAGS = flags.FLAGS
 def main(*args, **kwargs):
     with open(FLAGS.hash_keys, "r") as f:
         student_hash_keys = json.load(f)
-    
+
     nasbench = nasbench_api.NASBench(FLAGS.path_to_nasbench)
     for student_key in student_hash_keys:
         module = nasbench.fixed_statistics[student_key]
         spec = model_spec.ModelSpec(module['module_adjacency'], module['module_operations'])
-    
+
         config = nasbench_config.build_config()
         for flag in FLAGS.flags_by_module_dict()[args[0][0]]:
             config[flag.name] = flag.value
         config['use_tpu'] = False
         config['use_KD'] = True
         config['intermediate_evaluations'] = ['1.0']
-    
+
         logging.info("Train and evaluate with config\n{}\n and spec\n{}".format(config, spec))
         save_path = str(Path(FLAGS.save_path, f"student_{student_key}"))
-        meta = train(spec, config, save_path)
-        
+        train(spec, config, save_path)
+
         with open(Path(save_path, "kd_meta.json"), "w") as f:
             json.dump({
                 "imitation_lmb": FLAGS.imitation_lmb,
                 "temperature": FLAGS.temperature,
             }, f)
         logging.info(f"model {student_key} trained and stored to {save_path}")
-    
-    
 
 
 if __name__ == "__main__":

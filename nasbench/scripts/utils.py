@@ -62,7 +62,7 @@ def _dummy_imput_fn(params):
 def train(spec, config, save_path):
     evaluator = _TrainAndEvaluator(spec, config, save_path)
     meta = evaluator.run()
-    with tf.io.gfile.GFile(str(Path(save_path, "meta.json")), 'w') as f:
+    with tf.gfile.Open(str(Path(save_path, "meta.json")), 'w') as f:
         json.dump(meta, f, cls=NumpyEncoder)
     return meta
 

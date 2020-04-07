@@ -11,3 +11,7 @@ nasbench/my_model_dir/
 nasbench/my_model_dir_tmp/
 nasbench/my_model_dir_kd/
 nasbench/data
+.devcontainer
+.vscode
+Dockerfile
+

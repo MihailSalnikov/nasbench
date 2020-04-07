@@ -36,6 +36,8 @@ flags.DEFINE_string('hash_key', '02e5a0247bbdcf2860b7e96f74961594',
                     'Hash key of nasbench architecture for traning')
 flags.DEFINE_string('save_path', '../data/donor_data/',
                     'Path to directory for storing donor data')
+flags.DEFINE_float('trainset_part_percentage', 100.0,
+                   'trainset_part_percentage like in prepare KD dataset')
 
 # Redefine file flags
 flags.DEFINE_list(
@@ -71,17 +73,16 @@ def main(*args, **kwargs):
     nasbench = nasbench_api.NASBench(FLAGS.path_to_nasbench)
     module = nasbench.fixed_statistics[FLAGS.hash_key]
     spec = model_spec.ModelSpec(module['module_adjacency'], module['module_operations'])
-    
+
     config = nasbench_config.build_config()
     for flag in FLAGS.flags_by_module_dict()[args[0][0]]:
         config[flag.name] = flag.value
     config['use_tpu'] = False
     config['use_KD'] = False
-    
+    config['intermediate_evaluations'] = ['1.0']
+
     logging.info("Train and evaluate with config\n{}\n and spec\n{}".format(config, spec))
-    meta = train(spec, config, FLAGS.save_path)
-    
-    
+    train(spec, config, FLAGS.save_path)
 
 
 if __name__ == "__main__":

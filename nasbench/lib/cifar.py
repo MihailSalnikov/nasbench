@@ -25,6 +25,10 @@ from __future__ import print_function
 import functools
 import tensorflow as tf
 
+from absl import flags
+
+FLAGS = flags.FLAGS
+
 WIDTH = 32
 HEIGHT = 32
 RGB_MEAN = [125.31, 122.95, 113.87]
@@ -68,23 +72,28 @@ class CIFARInput(object):
   @property
   def num_images(self):
     """Number of images in the dataset (depends on the mode)."""
-    size = 0
-    for filename in self.data_files:
-        for _ in tf.python_io.tf_record_iterator(filename):
-            size += 1
-    return size
-#     if self.mode == 'train':
-#       return 40000
-#     elif self.mode == 'train_eval':
-#       return 10000
-#     elif self.mode == 'valid':
-#       return 10000
-#     elif self.mode == 'test':
-#       return 10000
-#     elif self.mode == 'augment':
-#       return 50000
-#     elif self.mode == 'sample':
-#       return 100
+    # size = 0
+    # for filename in self.data_files:
+    #     for _ in tf.python_io.tf_record_iterator(filename):
+    #         size += 1
+    # return size
+    if 'trainset_part_percentage' in FLAGS:
+      multiplier = FLAGS.trainset_part_percentage / 100.0
+    else:
+      multiplier = 1.0
+
+    if self.mode == 'train':
+      return int(40000 * multiplier)
+    elif self.mode == 'train_eval':
+      return int(10000 * multiplier)
+    elif self.mode == 'valid':
+      return 10000
+    elif self.mode == 'test':
+      return 10000
+    elif self.mode == 'augment':
+      return int(40000 * multiplier)
+    elif self.mode == 'sample':
+      return 100
 
   def input_fn(self, params):
     """Returns a CIFAR tf.data.Dataset object.
