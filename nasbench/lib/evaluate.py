@@ -134,17 +134,27 @@ class _TrainAndEvaluator(object):
         # once at the start for completeness, accuracies expected to be around
         # random selection. Note that batch norm moving averages change during
         # the step but the trainable weights do not.
-        self.estimator.train(
-            input_fn=self.input_train.input_fn,
-            max_steps=1,
-            hooks=[timing.train_hook],
-            saving_listeners=[timing.saving_listener])
-        evaluation_results.append(self._evaluate_all(0.0, 0))
+        # self.estimator.train(
+        #     input_fn=self.input_train.input_fn,
+        #     max_steps=1,
+        #     hooks=[timing.train_hook],
+        #     saving_listeners=[timing.saving_listener])
+        # evaluation_results.append(self._evaluate_all(0.0, 0))
 
         for next_evaluation in evaluations:
           epoch = next_evaluation * self.config['train_epochs']
           train_steps = int(epoch * self.input_train.num_images /
                             self.config['batch_size'])
+          print("\n\n\n")
+          print("-"*50, end="")
+          print("->")
+          print("next_evaluation: ", next_evaluation)
+          print("self.config['train_epochs']: ", self.config['train_epochs'])
+          print("epoch: ", epoch)
+          print("self.input_train.num_images: ", self.input_train.num_images)
+          print("self.config['batch_size']: ", self.config['batch_size'])
+          print("train_steps: ", train_steps)
+          print("-"*50, "\n\n")
           self.estimator.train(
               input_fn=self.input_train.input_fn,
               max_steps=train_steps,
@@ -264,8 +274,8 @@ def _create_estimator(spec, config, model_dir,
 
   run_config = tf.contrib.tpu.RunConfig(
       model_dir=model_dir,
-      keep_checkpoint_max=3,    # Keeps ckpt at start, halfway, and end
-      save_checkpoints_secs=2**30,
+      keep_checkpoint_max=2,
+      save_checkpoints_steps=7490,
       tpu_config=tf.contrib.tpu.TPUConfig(
           iterations_per_loop=config['tpu_iterations_per_loop'],
           num_shards=config['tpu_num_shards']))

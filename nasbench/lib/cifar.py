@@ -77,7 +77,7 @@ class CIFARInput(object):
     #     for _ in tf.python_io.tf_record_iterator(filename):
     #         size += 1
     # return size
-    if 'trainset_part_percentage' in FLAGS:
+    if 'trainset_part_percentage' in FLAGS and float(FLAGS.trainset_part_percentage) != 100.0:
       multiplier = FLAGS.trainset_part_percentage / 100.0
     else:
       multiplier = 1.0
