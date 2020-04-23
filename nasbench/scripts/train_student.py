@@ -42,6 +42,8 @@ flags.DEFINE_float('temperature', 20.0,
                    'Temperature for KD process')
 flags.DEFINE_float('trainset_part_percentage', 100.0,
                    'trainset_part_percentage like in prepare KD dataset')
+flags.DEFINE_string('optimizer', 'Adam',
+                   'Adam, RMSProp, SGD or Momentum')
 
 # Redefine file flags
 flags.DEFINE_list(
@@ -88,6 +90,7 @@ def main(*args, **kwargs):
         config['use_tpu'] = False
         config['use_KD'] = True
         config['intermediate_evaluations'] = ['1.0']
+        config['optimizer'] = FLAGS.optimizer
 
         logging.info("Train and evaluate with config\n{}\n and spec\n{}".format(config, spec))
         save_path = str(Path(FLAGS.save_path, f"student_{student_key}"))
@@ -97,6 +100,7 @@ def main(*args, **kwargs):
             json.dump({
                 "imitation_lmb": FLAGS.imitation_lmb,
                 "temperature": FLAGS.temperature,
+                "optimizer": FLAGS.optimizer
             }, f)
         logging.info(f"model {student_key} trained and stored to {save_path}")
 

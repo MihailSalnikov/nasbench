@@ -260,11 +260,25 @@ def build_model_fn(spec, config, num_train_images):
 
       # Set LR to 0 for step 0 to initialize the weights without training
       learning_rate = tf.where(tf.equal(global_step, 0), 0.0, learning_rate)
-
-      optimizer = tf.train.RMSPropOptimizer(
-          learning_rate=learning_rate,
-          momentum=config['momentum'],
-          epsilon=1.0)
+      
+      if optimizer in config and config["optimizer"] == 'Adam':
+        optimizer = tf.train.AdamOptimizer(
+            learning_rate=learning_rate,
+            momentum=config['momentum'],)
+            #epsilon=1.0)
+      elif optimizer in config and config["optimizer"] == 'SGD':
+        optimizer = tf.train.GradientDescentOptimizer(
+            learning_rate=learning_rate)
+      elif optimizer in config and config["optimizer"] == 'Momentum':
+        optimizer = tf.train.MomentumOptimizer(
+            learning_rate=learning_rate,
+            momentum=config['momentum'],)
+      else:
+        optimizer = tf.train.RMSPropOptimizer(
+            learning_rate=learning_rate,
+            momentum=config['momentum'],
+            epsilon=1.0)
+                
       if config['use_tpu']:
         optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
 
