@@ -94,6 +94,8 @@ flags.DEFINE_list(
 flags.DEFINE_integer(
     'num_repeats', 3,
     'Number of repeats evaluated for each model in the space.')
+flags.DEFINE_string('optimizer', 'SGD', 'SGD, RMSProp, SGD or Momentum')
+flags.DEFINE_string('dataset', 'cifar', 'cifar or mnist')
 
 # TPU flags
 flags.DEFINE_bool(

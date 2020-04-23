@@ -29,15 +29,14 @@ for name in [
     'test_data_file', 'sample_data_file',
     'batch_size', 'train_epochs']:
         delattr(flags.FLAGS, name)
-        
+
+
 flags.DEFINE_string('path_to_nasbench', '../data/nasbench_only108.tfrecord',
                     'Path to nasbanch dataset tfrecord file')
 flags.DEFINE_string('hash_key', '02e5a0247bbdcf2860b7e96f74961594',
                     'Hash key of nasbench architecture for traning')
 flags.DEFINE_string('save_path', '../data/donor_data/',
                     'Path to directory for storing donor data')
-flags.DEFINE_float('trainset_part_percentage', 100.0,
-                   'trainset_part_percentage like in prepare KD dataset')
 
 # Redefine file flags
 flags.DEFINE_list(
@@ -57,6 +56,16 @@ flags.DEFINE_string(
 flags.DEFINE_string(
     'sample_data_file', '../data/dataset/sample.tfrecords', 'Sampled batch data in TFRecord format.')
 
+# dataset num samples config
+flags.DEFINE_integer('num_train', 40000, 'num train samples')
+flags.DEFINE_integer('num_train_eval', 10000, 'num train_eval train samples')
+flags.DEFINE_integer('num_valid', 10000, 'num alid samples')
+flags.DEFINE_integer('num_test', 10000, 'num test samples')
+flags.DEFINE_integer('num_augment', 40000, 'num augment samples')
+flags.DEFINE_integer('num_sample', 100, 'num sample samples')
+flags.DEFINE_float('trainset_part_percentage', 100.0,
+                   'trainset_part_percentage like in prepare KD dataset')
+
 # Model hyperparameters. The default values are exactly what is used during the
 # exhaustive evaluation of all models.
 flags.DEFINE_integer(
@@ -65,6 +74,7 @@ flags.DEFINE_integer(
     'train_epochs', 108,
     'Maximum training epochs. If --train_seconds is reached first, training'
     ' may not reach --train_epochs.')
+
 
 FLAGS = flags.FLAGS
 
@@ -80,6 +90,11 @@ def main(*args, **kwargs):
     config['use_tpu'] = False
     config['use_KD'] = False
     config['intermediate_evaluations'] = ['1.0']
+
+    trainset_multipier = FLAGS.trainset_part_percentage / 100.0
+    config['num_train'] = int(config['num_train'] * trainset_multipier)
+    config['num_train_eval'] = int(config['num_train_eval'] * trainset_multipier)
+    config['num_augment'] = int(config['num_augment'] * trainset_multipier)
 
     logging.info("Train and evaluate with config\n{}\n and spec\n{}".format(config, spec))
     train(spec, config, FLAGS.save_path)

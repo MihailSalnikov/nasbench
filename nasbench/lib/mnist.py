@@ -25,17 +25,15 @@ from __future__ import print_function
 import functools
 import tensorflow as tf
 
-WIDTH = 32
-HEIGHT = 32
-RGB_MEAN = [125.31, 122.95, 113.87]
-RGB_STD = [62.99, 62.09, 66.70]
+WIDTH = 28
+HEIGHT = 28
 
 
-class CIFARInput(object):
+class MNISTnput(object):
     """Wrapper class for input_fn passed to TPUEstimator."""
 
     def __init__(self, mode, config):
-        """Initializes a CIFARInput object.
+        """Initializes a MNISTnput object.
 
         Args:
             mode: one of [train, valid, test, augment, sample]
@@ -94,7 +92,7 @@ class CIFARInput(object):
             return 100
 
     def input_fn(self, params):
-        """Returns a CIFAR tf.data.Dataset object.
+        """Returns a MNIST tf.data.Dataset object.
 
         Args:
             params: parameter dict pass by Estimator.
@@ -149,7 +147,7 @@ class CIFARInput(object):
         return dataset
 
     def input_fn_aug_always(self, params):
-        """Returns a CIFAR tf.data.Dataset object.
+        """Returns a MNIST tf.data.Dataset object.
 
         Args:
             params: parameter dict pass by Estimator.
@@ -194,7 +192,7 @@ class CIFARInput(object):
         return dataset
 
     def input_fn_predict(self, params):
-        """Returns a CIFAR tf.data.Dataset object.
+        """Returns a MNIST tf.data.Dataset object.
 
         Args:
             params: parameter dict pass by Estimator.
@@ -238,7 +236,7 @@ def serving_input_fn(): # fmsnew: todo: fill (see tutorial https://www.damienpon
 
 
 def _preprocess(image):
-    """Perform standard CIFAR preprocessing.
+    """Perform standard MNIST preprocessing.
 
     Pads the image then performs a random crop.
     Then, image is flipped horizontally randomly.
@@ -254,7 +252,7 @@ def _preprocess(image):
             image, HEIGHT + 8, WIDTH + 8)
 
     # Random crop
-    image = tf.random_crop(image, [HEIGHT, WIDTH, 3], seed=0)
+    image = tf.random_crop(image, [HEIGHT, WIDTH, 1], seed=0)
 
     # Random flip
     image = tf.image.random_flip_left_right(image, seed=0)
@@ -271,15 +269,16 @@ def _parser(use_preprocessing, serialized_example):
                     'label': tf.FixedLenFeature([], tf.int64),
             })
     image = tf.decode_raw(features['image'], tf.uint8)
-    image.set_shape([3 * HEIGHT * WIDTH])
-    image = tf.reshape(image, [3, HEIGHT, WIDTH])
+    image.set_shape([1 * HEIGHT * WIDTH])
+    image = tf.reshape(image, [1, HEIGHT, WIDTH])
     # TODO(chrisying): handle NCHW format
     image = tf.transpose(image, [1, 2, 0])
     image = tf.cast(image, tf.float32)
     if use_preprocessing:
         image = _preprocess(image)
-    image -= tf.constant(RGB_MEAN, shape=[1, 1, 3])
-    image /= tf.constant(RGB_STD, shape=[1, 1, 3])
+    # image -= tf.constant(RGB_MEAN, shape=[1, 1, 1])
+    # image /= tf.constant(RGB_STD, shape=[1, 1, 1])
+    image /= tf.constant(255.0, shape=[1, 1, 1])
     label = tf.cast(features['label'], tf.int32)
     return image, label
 
@@ -302,15 +301,16 @@ def _parser_KD(use_preprocessing, serialized_example):
                     'label': tf.FixedLenFeature([11], tf.float32),
             })
     image = tf.decode_raw(features['image'], tf.uint8)
-    image.set_shape([3 * HEIGHT * WIDTH])
-    image = tf.reshape(image, [3, HEIGHT, WIDTH])
+    image.set_shape([1 * HEIGHT * WIDTH])
+    image = tf.reshape(image, [1, HEIGHT, WIDTH])
     # TODO(chrisying): handle NCHW format
     image = tf.transpose(image, [1, 2, 0])
     image = tf.cast(image, tf.float32)
     if use_preprocessing:
         image = _preprocess(image)
-    image -= tf.constant(RGB_MEAN, shape=[1, 1, 3])
-    image /= tf.constant(RGB_STD, shape=[1, 1, 3])
+    # image -= tf.constant(RGB_MEAN, shape=[1, 1, 1])
+    # image /= tf.constant(RGB_STD, shape=[1, 1, 1])
+    image /= tf.constant(255.0, shape=[1, 1, 1])
     label = tf.cast(features['label'], tf.float32)
     return image, label
 
