@@ -37,7 +37,7 @@ if __name__ == "__main__":
 
     x_sample, y_sample = x_valid[:100], y_valid[:100]
 
-    base_path = Path("../../data/dataset/mnist")
+    base_path = Path("../data/dataset/mnist")
     base_path.mkdir(parents=True, exist_ok=True)
 
     batch_size = x_train.shape[0] // 4

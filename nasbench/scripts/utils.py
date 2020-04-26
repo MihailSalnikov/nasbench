@@ -67,7 +67,7 @@ def train(spec, config, save_path):
     return meta
 
 
-def prepare_kd_dataset(spec, config, model_path, dataset_files, trainset_part_percentage):
+def prepare_kd_dataset(spec, config, model_path, dataset_files, new_dataset_path, trainset_part_percentage):
     for filename in dataset_files:  
         raw_dataset = tf.data.TFRecordDataset([filename])
         params = {'file': filename, 'use_KD': False}
@@ -95,6 +95,7 @@ def prepare_kd_dataset(spec, config, model_path, dataset_files, trainset_part_pe
             name_postfix += '_'+str(trainset_part_percentage)
         out_file = filename.with_name(filename.stem+name_postfix)
         out_file = out_file.with_suffix(".tfrecords")
+        out_file = Path(new_dataset_path) / out_file
         filename = str(filename)
         with tf.io.TFRecordWriter(str(out_file)) as record_writer:
             for i, raw_record in enumerate(raw_dataset):

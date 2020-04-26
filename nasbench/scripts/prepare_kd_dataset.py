@@ -38,7 +38,8 @@ flags.DEFINE_string('hash_key', '02e5a0247bbdcf2860b7e96f74961594',
                     'Hash key of nasbench architecture for traning')
 flags.DEFINE_string('save_path', '../data/donor_data/',
                     'Path to directory with donor data')
-flags.DEFINE_float('trainset_part_percentage', 100.0, 'percentage of dataset')
+flags.DEFINE_string('new_dataset_path', 'path to folder for stroring new dataset files',
+                    '../data/dataset/mnist/kd/')
 
 # Redefine file flags
 flags.DEFINE_list(
@@ -63,6 +64,15 @@ flags.DEFINE_string(
 flags.DEFINE_integer(
     'batch_size', 256, 'Training batch size.')
 
+flags.DEFINE_integer('num_train', 40000, 'num train samples')
+flags.DEFINE_integer('num_train_eval', 10000, 'num train_eval train samples')
+flags.DEFINE_integer('num_valid', 10000, 'num alid samples')
+flags.DEFINE_integer('num_test', 10000, 'num test samples')
+flags.DEFINE_integer('num_augment', 40000, 'num augment samples')
+flags.DEFINE_integer('num_sample', 100, 'num sample samples')
+flags.DEFINE_float('trainset_part_percentage', 100.0,
+                   'trainset_part_percentage for preparing KD dataset')
+
 FLAGS = flags.FLAGS
 
 
@@ -76,11 +86,17 @@ def main(*args, **kwargs):
         config[flag.name] = flag.value
     config['use_tpu'] = False
     config['use_KD'] = False
+    config['intermediate_evaluations'] = ['1.0']
+
+    trainset_multipier = FLAGS.trainset_part_percentage / 100.0
+    config['num_train'] = int(config['num_train'] * trainset_multipier)
+    config['num_train_eval'] = int(config['num_train_eval'] * trainset_multipier)
+    config['num_augment'] = int(config['num_augment'] * trainset_multipier)
 
     
     logging.info("Prepare KD dataset")
     dataset_files = FLAGS.train_data_files + [FLAGS.valid_data_file, FLAGS.test_data_file, FLAGS.sample_data_file]
-    prepare_kd_dataset(spec, config, FLAGS.save_path, dataset_files, FLAGS.trainset_part_percentage)
+    prepare_kd_dataset(spec, config, FLAGS.save_path, dataset_files, FLAGS.new_dataset_path, FLAGS.trainset_part_percentage)
     
     
 
