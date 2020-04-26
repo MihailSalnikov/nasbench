@@ -274,7 +274,7 @@ def _augment_and_evaluate_impl(spec, config, model_dir, epochs_per_eval=5):
 
 
 def _create_estimator(spec, config, model_dir,
-                                            num_train_images, num_sample_images=None):
+                      num_train_images, num_sample_images=None):
     """Creates the TPUEstimator object."""
     # Estimator will save a checkpoint at the end of every train() call. Disable
     # automatic checkpoints by setting the time interval between checkpoints to
@@ -301,7 +301,7 @@ def _create_estimator(spec, config, model_dir,
             model_fn=model_builder.build_model_fn(
                     spec, config, num_train_images),
             config=run_config,
-            params={'use_KD':config['use_KD']},
+            params={'use_KD': config['use_KD']},
             train_batch_size=config['batch_size'],
             eval_batch_size=config['batch_size'],
             predict_batch_size=num_sample_images)

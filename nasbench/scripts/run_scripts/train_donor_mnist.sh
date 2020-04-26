@@ -1,0 +1,11 @@
+python3 train_donor.py \
+    --train_data_files ../data/dataset/mnist/train_0.tfrecords,../data/dataset/mnist/train_1.tfrecords,../data/dataset/mnist/train_2.tfrecords,../data/dataset/mnist/train_3.tfrecords\
+    --test_data_file ../data/dataset/mnist/test.tfrecords \
+    --valid_data_file ../data/dataset/mnist/valid.tfrecords \
+    --sample_data_file ../data/dataset/mnist/sample.tfrecords  \
+    --num_train 54000 \
+    --num_test 10000 \
+    --num_valid 6000 \
+    --save_path ../data/donor_mnist/ \
+    --hash_key 02e5a0247bbdcf2860b7e96f74961594 \
+    --dataset mnist \

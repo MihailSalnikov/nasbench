@@ -40,8 +40,6 @@ flags.DEFINE_float('imitation_lmb', 0.7,
                    'Immitation lambda for KD process')
 flags.DEFINE_float('temperature', 20.0,
                    'Temperature for KD process')
-flags.DEFINE_float('trainset_part_percentage', 100.0,
-                   'trainset_part_percentage like in prepare KD dataset')
 
 # Redefine file flags
 flags.DEFINE_list(
@@ -70,6 +68,16 @@ flags.DEFINE_integer(
     'Maximum training epochs. If --train_seconds is reached first, training'
     ' may not reach --train_epochs.')
 
+# dataset num samples config
+flags.DEFINE_integer('num_train', 40000, 'num train samples')
+flags.DEFINE_integer('num_train_eval', 10000, 'num train_eval train samples')
+flags.DEFINE_integer('num_valid', 10000, 'num alid samples')
+flags.DEFINE_integer('num_test', 10000, 'num test samples')
+flags.DEFINE_integer('num_augment', 40000, 'num augment samples')
+flags.DEFINE_integer('num_sample', 100, 'num sample samples')
+flags.DEFINE_float('trainset_part_percentage', 100.0,
+                   'trainset_part_percentage like in prepare KD dataset')
+
 FLAGS = flags.FLAGS
 
 
@@ -88,6 +96,11 @@ def main(*args, **kwargs):
         config['use_tpu'] = False
         config['use_KD'] = True
         config['intermediate_evaluations'] = ['1.0']
+
+        trainset_multipier = FLAGS.trainset_part_percentage / 100.0
+        config['num_train'] = int(config['num_train'] * trainset_multipier)
+        config['num_train_eval'] = int(config['num_train_eval'] * trainset_multipier)
+        config['num_augment'] = int(config['num_augment'] * trainset_multipier)
 
         logging.info("Train and evaluate with config\n{}\n and spec\n{}".format(config, spec))
         save_path = str(Path(FLAGS.save_path, f"student_{student_key}"))

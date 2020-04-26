@@ -16,7 +16,8 @@ import numpy as np
 from nasbench.lib import evaluate
 from nasbench.lib import model_spec
 from nasbench.lib import config as _config
-from nasbench.lib.cifar import _preprocess, _parser
+from nasbench.lib.cifar import _parser as cifar_parser
+from nasbench.lib.mnist import _parser as mnist_parser
 
 from nasbench.scripts.run_evaluation import NumpyEncoder
 
@@ -35,14 +36,14 @@ def _set_batch_dimension(batch_size, images, labels):
 
     return images, labels
 
-def _dummy_imput_fn(params):
+
+def _dummy_imput_fn_cifar(params):
     batch_size = params['batch_size']
     dataset = tf.data.TFRecordDataset(params['file'])
     dataset = dataset.prefetch(buffer_size=batch_size)
 
-   
-   # Parse, preprocess, and batch images
-    parser_fn = functools.partial(_parser, False)
+    # Parse, preprocess, and batch images
+    parser_fn = functools.partial(cifar_parser, False)
     dataset = dataset.apply(
         tf.contrib.data.map_and_batch(
             parser_fn,
@@ -55,9 +56,32 @@ def _dummy_imput_fn(params):
 
     # Prefetch to overlap in-feed with training
     dataset = dataset.prefetch(tf.contrib.data.AUTOTUNE)
-    
 
     return dataset
+
+
+def _dummy_imput_fn_mnist(params):
+    batch_size = params['batch_size']
+    dataset = tf.data.TFRecordDataset(params['file'])
+    dataset = dataset.prefetch(buffer_size=batch_size)
+
+    # Parse, preprocess, and batch images
+    parser_fn = functools.partial(mnist_parser, False)
+    dataset = dataset.apply(
+        tf.contrib.data.map_and_batch(
+            parser_fn,
+            batch_size=batch_size,
+            num_parallel_batches=None,
+            drop_remainder=True))
+
+    # Assign static batch size dimension
+    dataset = dataset.map(functools.partial(_set_batch_dimension, batch_size))
+
+    # Prefetch to overlap in-feed with training
+    dataset = dataset.prefetch(tf.contrib.data.AUTOTUNE)
+
+    return dataset
+
 
 def train(spec, config, save_path):
     evaluator = _TrainAndEvaluator(spec, config, save_path)
@@ -67,8 +91,22 @@ def train(spec, config, save_path):
     return meta
 
 
-def prepare_kd_dataset(spec, config, model_path, dataset_files, new_dataset_path, trainset_part_percentage):
-    for filename in dataset_files:  
+def prepare_kd_dataset(spec, config, model_path,
+                       dataset_files, new_dataset_path,
+                       trainset_part_percentage):
+
+    if config['dataset'] == 'mnist':
+        _dummy_imput_fn = _dummy_imput_fn_mnist
+    elif config['cifar']:
+        _dummy_imput_fn = _dummy_imput_fn_cifar
+    else:
+        raise Exception(
+            'Unsupported config[\'dataset\'] = {}. '
+            'Supported only cifar of mnist'.format(config['dataset'])
+        )
+
+    Path(new_dataset_path).mkdir(parents=True, exist_ok=True)
+    for filename in dataset_files:
         raw_dataset = tf.data.TFRecordDataset([filename])
         params = {'file': filename, 'use_KD': False}
         estimator = tf.contrib.tpu.TPUEstimator(
@@ -80,14 +118,14 @@ def prepare_kd_dataset(spec, config, model_path, dataset_files, new_dataset_path
             eval_batch_size=config['batch_size'],
             predict_batch_size=100)
 
-        est_preds = estimator.predict(input_fn=_dummy_imput_fn, yield_single_examples=False)
+        est_preds = estimator.predict(input_fn=_dummy_imput_fn,
+                                      yield_single_examples=False)
         all_pred_logits_aug = []
         for preds in est_preds:
             all_pred_logits_aug.append(preds['logits'])
         if len(all_pred_logits_aug) == 0:
-            logging.error("all_pred_logits_aug is empty")
+            logging.error(filename, ": all_pred_logits_aug is empty")
         all_pred_logits_aug = np.vstack(all_pred_logits_aug)
-
 
         filename = Path(filename)
         name_postfix = '_KD'
@@ -95,13 +133,13 @@ def prepare_kd_dataset(spec, config, model_path, dataset_files, new_dataset_path
             name_postfix += '_'+str(trainset_part_percentage)
         out_file = filename.with_name(filename.stem+name_postfix)
         out_file = out_file.with_suffix(".tfrecords")
-        out_file = Path(new_dataset_path) / out_file
+        out_file = Path(new_dataset_path, out_file.name)
         filename = str(filename)
         with tf.io.TFRecordWriter(str(out_file)) as record_writer:
             for i, raw_record in enumerate(raw_dataset):
                 if i >= 10000 * (trainset_part_percentage / 100.0):
                     break
-                
+
                 example = tf.train.Example()
                 example.ParseFromString(raw_record.numpy())
                 img = example.features.feature['image']

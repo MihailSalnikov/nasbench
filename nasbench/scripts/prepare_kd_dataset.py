@@ -38,8 +38,8 @@ flags.DEFINE_string('hash_key', '02e5a0247bbdcf2860b7e96f74961594',
                     'Hash key of nasbench architecture for traning')
 flags.DEFINE_string('save_path', '../data/donor_data/',
                     'Path to directory with donor data')
-flags.DEFINE_string('new_dataset_path', 'path to folder for stroring new dataset files',
-                    '../data/dataset/mnist/kd/')
+flags.DEFINE_string('new_dataset_path', '../data/dataset/mnist/kd/',
+                    'path to folder for stroring new dataset files')
 
 # Redefine file flags
 flags.DEFINE_list(
@@ -80,7 +80,7 @@ def main(*args, **kwargs):
     nasbench = nasbench_api.NASBench(FLAGS.path_to_nasbench)
     module = nasbench.fixed_statistics[FLAGS.hash_key]
     spec = model_spec.ModelSpec(module['module_adjacency'], module['module_operations'])
-    
+
     config = nasbench_config.build_config()
     for flag in FLAGS.flags_by_module_dict()[args[0][0]]:
         config[flag.name] = flag.value
@@ -93,17 +93,22 @@ def main(*args, **kwargs):
     config['num_train_eval'] = int(config['num_train_eval'] * trainset_multipier)
     config['num_augment'] = int(config['num_augment'] * trainset_multipier)
 
-    
     logging.info("Prepare KD dataset")
-    dataset_files = FLAGS.train_data_files + [FLAGS.valid_data_file, FLAGS.test_data_file, FLAGS.sample_data_file]
-    prepare_kd_dataset(spec, config, FLAGS.save_path, dataset_files, FLAGS.new_dataset_path, FLAGS.trainset_part_percentage)
-    
-    
+    dataset_files = FLAGS.train_data_files + [
+        FLAGS.valid_data_file,
+        FLAGS.test_data_file,
+        FLAGS.sample_data_file
+    ]
+    prepare_kd_dataset(spec, config,
+                       FLAGS.save_path,
+                       dataset_files,
+                       FLAGS.new_dataset_path,
+                       FLAGS.trainset_part_percentage)
 
 
 if __name__ == "__main__":
     tf.enable_eager_execution()
-    
+
     logging.set_verbosity('info')
     logging.set_stderrthreshold('info')
 
